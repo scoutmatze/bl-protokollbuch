@@ -84,6 +84,28 @@ Diese Dateien lassen sich nutzen, um **Topics samt Status** (`laufend` / `erledi
 `nicht_priorisiert`) vorzubelegen und das automatische Matching zu **validieren** — ein
 erheblicher Beschleuniger.
 
+## Validierung am Gesamtbestand (regelbasiert, ohne LLM)
+
+`scripts/probe_extraction.sh` hat **alle** Protokolle ausgelesen (PDF via `pdftotext`,
+DOCX via `docx2txt`) und die Struktursignale gemessen. Ergebnis über **156 echte
+Protokolle** (Identifikation: „PK"/„PL" als abgegrenztes Token):
+
+| Signal | Trefferquote |
+|---|---|
+| I/B/E-Legende erkannt | **96 %** (151/156) |
+| Tagesordnung erkannt | **92 %** (144/156) |
+| ≥ 3 TOPs erkannt | **97 %** (152/156) |
+| Auslesbar ohne OCR | **100 %** (0 Scans) |
+
+→ Die rein regelbasierte Extraktion trägt bei ~95 % der Protokolle. Die Ausreißer sind
+v. a. kurze eBL-/Sondersitzungen mit abweichendem Aufbau → Fallback + manuelles Review.
+Das rechtfertigt die Strategie „v1 ohne KI" ([KONZEPT.md](KONZEPT.md#10-offene-punkte--risiken)).
+
+### Harte Regel: Protokoll-Identifikation
+Welche Datei *das Protokoll* ist, wird über **„PK" oder „PL" als abgegrenztes Token**
+erkannt (Regex `(^|[ _/.])(p[kl])([ _.]|$)`), **nicht** als Teilstring — sonst werden
+Anhänge wie „**Pl**anung", „Jahres**pl**an", „BL-**PK**" fälschlich als Protokoll gewertet.
+
 ## Technische Stolpersteine
 
 - **Encoding/Umlaute:** Mit manchen PDF-Extraktoren werden Umlaute zerstört
