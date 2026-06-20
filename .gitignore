@@ -1,0 +1,42 @@
+# === Schutz der Protokolldaten — NIEMALS Inhalte einchecken ===
+data/
+*.pdf
+*.docx
+*.xlsx
+*.eml
+*.jpg
+*.jpeg
+*.png
+!docs/**/*.png        # Diagramme in der Doku sind erlaubt
+
+# Secrets / Umgebung
+.env
+infra/.env
+*.local
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Node / Frontend
+node_modules/
+dist/
+.vite/
+
+# Datenbank-Dumps / Volumes
+*.sql.gz
+pgdata/
+ollama/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini

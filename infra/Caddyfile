@@ -1,0 +1,21 @@
+# Reverse Proxy + automatisches TLS. {$DOMAIN} kommt aus der Umgebung.
+{$DOMAIN} {
+	encode gzip
+
+	# API
+	handle /api/* {
+		reverse_proxy backend:8000
+	}
+
+	# Frontend (Phase 5): statische Vite-Dateien.
+	# handle {
+	# 	root * /srv/frontend
+	# 	try_files {path} /index.html
+	# 	file_server
+	# }
+
+	# Bis das Frontend existiert: alles an die API.
+	handle {
+		reverse_proxy backend:8000
+	}
+}

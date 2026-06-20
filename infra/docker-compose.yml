@@ -1,0 +1,79 @@
+# BL-Protokollbuch — Docker-Compose-Stack
+# Siehe docs/DEPLOYMENT.md. Lokale Entwicklung == Produktion (gleicher Stack).
+name: bl-protokollbuch
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama:/root/.ollama
+    restart: unless-stopped
+    # GPU optional: nvidia runtime hier ergänzen, falls vorhanden.
+
+  backend:
+    build: ../backend
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      ollama:
+        condition: service_started
+    restart: unless-stopped
+
+  worker:
+    build: ../backend
+    command: ["python", "-m", "app.worker"]
+    env_file: .env
+    volumes:
+      # Protokollbestand read-only in den Worker mounten (Pfad in .env).
+      - ${PROTOKOLL_SOURCE_DIR}:/data/quelle:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      ollama:
+        condition: service_started
+    restart: unless-stopped
+
+  # frontend folgt in Phase 5 (statischer Vite-Build, von Caddy ausgeliefert).
+
+  caddy:
+    image: caddy:2
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  ollama:
+  caddy_data:
+  caddy_config:

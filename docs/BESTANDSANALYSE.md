@@ -1,0 +1,94 @@
+# Bestandsanalyse
+
+Befunde aus einer Stichproben-Analyse des echten Dateibestands
+(`…/Bundesleitung - Dokumente/BL-Sitzungen`), Stand 2026-06-20.
+Diese Analyse ist die empirische Grundlage für [DATENMODELL.md](DATENMODELL.md)
+und [PIPELINE.md](PIPELINE.md).
+
+## Umfang
+
+- **361 PDF** + **378 DOCX** Dateien.
+- Davon ca. **128** eigentliche Sitzungsprotokolle (Dateiname enthält `PK`/`PL` = Protokoll).
+- Der große Rest sind **Anlagen** (Synopsen, Strategiepapiere, Tabellen, E-Mails, Bilder).
+
+## Zwei Struktur-Epochen
+
+| Epoche | Ablage | Protokoll-Format | Beispiel |
+|---|---|---|---|
+| **2014 – ~2020** | flache Jahresordner | PDF | `2014/140214_pk_bl.pdf`, `190130_ebl_pk.pdf` |
+| **~2021 – 2026** | Monatsordner + Anlagen | oft **DOCX** „Final", teils PDF | `2024/01_Februar/240216 BL PK_Final.pdf` |
+
+**Konsequenz:** Die Ingestion braucht (a) einen **Format-Router** (PDF *und* DOCX, dazu
+XLSX/EML als Anlagen) und (b) zwei kleine **epochenspezifische Namens-/Layout-Parser**.
+
+## Ablagestruktur der neueren Epoche
+
+Pro Monatsordner typischerweise:
+
+```
+2025/01 Februar/
+├─ 250214_BL_PL_Final.pdf        ← das Protokoll
+├─ 250214 TO BL.pdf              ← Tagesordnung (separat)
+├─ Organisatorisches.xlsx
+├─ BL I Themenspeicher 2025.docx ← Themen-Tracker (siehe unten)
+├─ TOP 3 Ausbildung/            ← pro TOP ein Unterordner mit Anlagen
+│   ├─ Baustein 2b Synopse_final.docx
+│   ├─ Gesprächsprotokoll MF-AGA ZAT.docx
+│   └─ Beschlussfassung … Rahmenkonzept Modul 2b.eml
+├─ TOP 4 Prisma/
+└─ …
+```
+
+→ **TOP-Unterordner liefern eine fertige thematische Gruppierung samt Anlagen.**
+Ordnername ≈ TOP-Titel; Inhalt → `Section.attachments`.
+
+## Sitzungstypen (aus Datei-/Ordnernamen ableitbar)
+
+| Kürzel | Bedeutung |
+|---|---|
+| `BL` | Bundesleitung (Präsenzsitzung) |
+| `eBL` | erweiterte / digitale Bundesleitung (Telko/Zoom) |
+| `Ring-BL` | gemeinsame Sitzung im Ring deutscher Pfadfinderverbände |
+| `ao` / `zusätzliche` | außerordentliche Sitzung |
+
+Sitzungsdatum steckt als `YYMMDD` im Dateinamen (`240216` → 16.02.2024).
+
+## Innerer Aufbau der Protokolle — über 12 Jahre konstant
+
+1. **Kopf:** Teilnehmende · Entschuldigt · Gäste · Verteiler · Folgetermin · Dateiname
+2. **Feste Legende:** `*) I = Information · B = Beratung · E = Entscheidung`
+3. **Tagesordnung** mit nummerierten TOPs (neuere zusätzlich mit Zeitbudget, z. B. „(24 von 20 Min.)")
+4. **Zweispaltiger Fließtext:** linke Spalte `INHALT`, rechte Spalte `WER` (Verantwortliche/Frist),
+   jede Zeile mit `I`/`B`/`E`-Marker.
+
+### Warum das wichtig ist
+
+Die **I/B/E-Marker** und die **WER-Spalte** sind bereits strukturierte Daten:
+
+- `E` (Entscheidung) ≈ **Beschluss**, `I` ≈ **Information**, `B` ≈ **Beratung/Diskussion**.
+- Die WER-Spalte liefert **Verantwortliche und Fristen** direkt.
+
+→ Klassifikation und Verantwortlichkeiten sind **größtenteils heuristisch** aus Layout + Markern
+ableitbar. Das **LLM glättet nur**, statt frei zu raten — das senkt die Abhängigkeit von der
+(lokal etwas schwächeren) LLM-Qualität deutlich.
+
+## Kontinuitäts-Dokumente = Ground Truth fürs Matching
+
+Es existieren menschgepflegte, sitzungsübergreifende Themen-Tracker:
+
+- `BL Themenspeicher <Jahr>.docx`
+- `BL Abgeschlossene TOPs <Jahr>.docx`
+- `BL Themen die nicht priorisiert wurden für <Jahr>.docx`
+
+Diese Dateien lassen sich nutzen, um **Topics samt Status** (`laufend` / `erledigt` /
+`nicht_priorisiert`) vorzubelegen und das automatische Matching zu **validieren** — ein
+erheblicher Beschleuniger.
+
+## Technische Stolpersteine
+
+- **Encoding/Umlaute:** Mit manchen PDF-Extraktoren werden Umlaute zerstört
+  (`Begrüßung` → `Begr��ung`). PyMuPDF liefert hier sauberer; korrektes UTF-8/Umlaut-Handling
+  gehört **verpflichtend in die Test-Suite**, sonst leidet die Volltextsuche.
+- **Gescannte Altprotokolle** brauchen ggf. OCR (`ocrmypdf`/Tesseract) — Qualität schwankt.
+- **DOCX-Protokolle** der neueren Epoche müssen nativ verarbeitet werden (`python-docx`),
+  nicht über einen PDF-Umweg.
