@@ -1,0 +1,51 @@
+# Entwicklungs-Stack: DB + Backend (Hot-Reload) + Frontend (Vite Dev-Server).
+# Start:   docker compose -f infra/docker-compose.dev.yml up
+# Migration + Daten (einmalig, in zweitem Terminal):
+#   docker compose -f infra/docker-compose.dev.yml run --rm backend alembic upgrade head
+#   docker compose -f infra/docker-compose.dev.yml run --rm backend python -m app.ingest.persist --root /data
+# Danach: Backend http://localhost:8000/docs  ·  Frontend http://localhost:5173
+#
+# PROTOKOLL_SOURCE_DIR (Pfad zum BL-Sitzungen-Ordner) in infra/.env setzen.
+name: bl-protokollbuch-dev
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: protokoll
+      POSTGRES_PASSWORD: protokoll
+      POSTGRES_DB: protokollbuch
+    ports: ["5432:5432"]
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U protokoll -d protokollbuch"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ../backend
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://protokoll:protokoll@db:5432/protokollbuch
+    volumes:
+      - ../backend:/app
+      - ${PROTOKOLL_SOURCE_DIR}:/data:ro
+    ports: ["8000:8000"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    image: node:20-alpine
+    working_dir: /fe
+    command: sh -c "npm install --no-audit --no-fund && npm run dev"
+    environment:
+      VITE_API_TARGET: http://backend:8000
+    volumes:
+      - ../frontend:/fe
+    ports: ["5173:5173"]
+    depends_on: [backend]
+
+volumes:
+  pgdata:

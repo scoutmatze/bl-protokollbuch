@@ -40,7 +40,19 @@ Zwei Kern-Nutzungen:
 - **Phase 1** — regelbasierte Ingestion (PDF/DOCX → TOPs → Items), validiert über 157
   Protokolle: 155/157 segmentiert, 22.367 Items (792 Beschlüsse) ✅
 - **Phase 2** — DB-Persistenz (PostgreSQL + pgvector) + deutsche Volltextsuche ✅
-- Nächste Phasen: Embeddings/semantische Suche · Themen-Matching · Wiki-UI · Deployment
+- **Frontend** — Minimal-UI (React/Vite): Suche mit Typ-Filter + Sitzungs-Browser ✅
+- Nächste Phasen: Embeddings/semantische Suche · Themen-Matching · Login · Deployment
+
+### Alles starten (Dev)
+
+```bash
+echo 'PROTOKOLL_SOURCE_DIR=<Pfad zum BL-Sitzungen-Ordner>' > infra/.env
+docker compose -f infra/docker-compose.dev.yml up        # db + backend + frontend
+# einmalig in zweitem Terminal: Schema + Daten laden
+docker compose -f infra/docker-compose.dev.yml run --rm backend alembic upgrade head
+docker compose -f infra/docker-compose.dev.yml run --rm backend python -m app.ingest.persist --root /data
+```
+Frontend: http://localhost:5173 · API-Doku: http://localhost:8000/docs
 
 Roadmap-Details siehe [docs/KONZEPT.md](docs/KONZEPT.md#roadmap).
 

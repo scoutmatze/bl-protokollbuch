@@ -1,0 +1,51 @@
+:root {
+  --bg: #f7f7f5;
+  --card: #fff;
+  --line: #e3e3df;
+  --text: #1f2328;
+  --muted: #6b7280;
+  --dpsg: #1f5c2e;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); }
+
+.app { max-width: 980px; margin: 0 auto; padding: 0 16px 48px; }
+header { display: flex; align-items: baseline; gap: 24px; padding: 20px 0; border-bottom: 1px solid var(--line); }
+header h1 { font-size: 20px; margin: 0; color: var(--dpsg); }
+nav button, .back, .suchleiste button {
+  font: inherit; cursor: pointer; border: 1px solid var(--line);
+  background: var(--card); padding: 6px 12px; border-radius: 6px;
+}
+nav button.on { background: var(--dpsg); color: #fff; border-color: var(--dpsg); }
+main { padding-top: 20px; }
+
+.suchleiste { display: flex; gap: 8px; }
+.suchleiste input { flex: 1; padding: 9px 12px; border: 1px solid var(--line); border-radius: 6px; font: inherit; }
+.suchleiste select { padding: 0 8px; border: 1px solid var(--line); border-radius: 6px; font: inherit; }
+.status { color: var(--muted); font-size: 13px; margin: 10px 2px; }
+
+.trefferliste, .itemliste { list-style: none; padding: 0; margin: 0; }
+.treffer { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin-bottom: 10px; }
+.treffer-meta { display: flex; gap: 10px; align-items: center; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+.treffer-text { line-height: 1.45; }
+
+.badge { font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 999px; color: #fff; white-space: nowrap; }
+.badge-beschluss { background: #1f5c2e; }
+.badge-aufgabe { background: #b45309; }
+.badge-diskussion { background: #3b5bb5; }
+.badge-info { background: #6b7280; }
+
+.wer { color: var(--dpsg); font-weight: 600; margin-left: 8px; }
+.vote { color: var(--muted); font-style: italic; margin-left: 8px; }
+
+.sitzungstabelle { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.sitzungstabelle th, .sitzungstabelle td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); font-size: 14px; }
+.sitzungstabelle tbody tr { cursor: pointer; }
+.sitzungstabelle tbody tr:hover { background: #f0f3ef; }
+
+.top { margin: 18px 0; }
+.top h3 { font-size: 15px; margin: 0 0 8px; }
+.item { display: flex; gap: 8px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--line); line-height: 1.4; }
+.item-text { flex: 1; }
+.back { margin-bottom: 14px; }
