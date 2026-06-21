@@ -36,17 +36,39 @@ Zwei Kern-Nutzungen:
 
 ## Projektstatus
 
-Phase 0 (Konzeption & Gerüst). Roadmap siehe [docs/KONZEPT.md](docs/KONZEPT.md#roadmap).
+- **Phase 0** — Konzeption & Gerüst ✅
+- **Phase 1** — regelbasierte Ingestion (PDF/DOCX → TOPs → Items), validiert über 157
+  Protokolle: 155/157 segmentiert, 22.367 Items (792 Beschlüsse) ✅
+- **Phase 2** — DB-Persistenz (PostgreSQL + pgvector) + deutsche Volltextsuche ✅
+- Nächste Phasen: Embeddings/semantische Suche · Themen-Matching · Wiki-UI · Deployment
 
-## Schnellstart (Entwicklung)
+Roadmap-Details siehe [docs/KONZEPT.md](docs/KONZEPT.md#roadmap).
+
+## Lokaler Entwicklungslauf
+
+Phase 1 (Extraktion, ohne DB) — strukturiertes JSON eines Protokolls:
 
 ```bash
-cp infra/.env.example infra/.env      # Secrets/Pfad zum Protokollbestand setzen
-docker compose -f infra/docker-compose.yml up -d
+docker build -t bl-backend-dev backend
+docker run --rm -v "$PWD/backend:/app" -v "<BL-Sitzungen>:/data:ro" -w /app \
+  bl-backend-dev python -m app.ingest.pipeline --root /data --all
 ```
 
-Inventar des Protokollbestands erzeugen (liest die Quelldateien nur lesend):
+Phase 2 (DB + Suche) — Postgres hochfahren, migrieren, persistieren, suchen:
 
 ```bash
-python scripts/inventory.py --source "<Pfad zum BL-Sitzungen-Ordner>" --out data/inventar.csv
+docker network create blnet
+docker run -d --name bldb --network blnet \
+  -e POSTGRES_USER=protokoll -e POSTGRES_PASSWORD=protokoll -e POSTGRES_DB=protokollbuch \
+  pgvector/pgvector:pg16
+export DBURL="postgresql+psycopg://protokoll:protokoll@bldb:5432/protokollbuch"
+run() { docker run --rm --network blnet -v "$PWD/backend:/app" -w /app -e DATABASE_URL="$DBURL" "$@"; }
+run -v "<BL-Sitzungen>:/data:ro" bl-backend-dev alembic upgrade head
+run -v "<BL-Sitzungen>:/data:ro" bl-backend-dev python -m app.ingest.persist --root /data
+```
+
+Tests:
+
+```bash
+docker run --rm -v "$PWD/backend:/app" -w /app bl-backend-dev python -m pytest -q
 ```
