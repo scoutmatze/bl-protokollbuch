@@ -53,6 +53,7 @@ export interface ThemaKopf {
 }
 
 export interface VerlaufEintrag {
+  section_id: string;
   document_id: string;
   sitzungsdatum: string | null;
   sitzungstyp: string;
@@ -68,8 +69,26 @@ export interface ThemaDetail {
   verlauf: VerlaufEintrag[];
 }
 
+export interface SektionTreffer {
+  id: string;
+  top_titel: string | null;
+  sitzungsdatum: string | null;
+  sitzungstyp: string;
+  aktuelles_thema: string | null;
+}
+
 async function get<T>(url: string): Promise<T> {
   const r = await fetch(url);
+  if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+  return r.json() as Promise<T>;
+}
+
+async function send<T>(method: string, url: string, body?: unknown): Promise<T> {
+  const r = await fetch(url, {
+    method,
+    headers: body ? { "Content-Type": "application/json" } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  });
   if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
   return r.json() as Promise<T>;
 }
@@ -83,4 +102,16 @@ export const api = {
   sitzung: (id: string) => get<SitzungDetail>(`/api/sitzungen/${id}`),
   themen: (min = 2) => get<{ anzahl: number; themen: ThemaKopf[] }>(`/api/themen?min_sitzungen=${min}`),
   thema: (id: string) => get<ThemaDetail>(`/api/themen/${id}`),
+
+  // Matching-Review
+  themaUmbenennen: (id: string, name: string) =>
+    send("PATCH", `/api/themen/${id}`, { name }),
+  topEntfernen: (themaId: string, sectionId: string) =>
+    send("POST", `/api/themen/${themaId}/sections/${sectionId}/ablehnen`),
+  topHinzufuegen: (themaId: string, sectionId: string) =>
+    send("POST", `/api/themen/${themaId}/sections/${sectionId}`),
+  themenZusammenfuehren: (zielId: string, quelleId: string) =>
+    send("POST", `/api/themen/${zielId}/merge`, { quelle_id: quelleId }),
+  sektionenSuche: (q: string) =>
+    get<{ treffer: SektionTreffer[] }>(`/api/sektionen?q=${encodeURIComponent(q)}`),
 };

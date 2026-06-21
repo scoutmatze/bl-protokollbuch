@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import re
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 
 from . import models
 
@@ -102,9 +102,25 @@ def build_topics(session, threshold: float = 0.5) -> dict:
             "einmalig": len(clusters) - mehrteilig, "ungetaggte_tops": ungetaggt}
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    import argparse
+
     from .db import SessionLocal
+
+    ap = argparse.ArgumentParser(description="Themen (neu) aufbauen")
+    ap.add_argument("--force", action="store_true",
+                    help="auch dann neu bauen, wenn manuelle Korrekturen existieren")
+    args = ap.parse_args(argv)
+
     with SessionLocal() as session:
+        # Schutz: manuelle Reviews (manuelle Links / Widersprüche) nicht versehentlich verwerfen.
+        manuell = session.scalar(select(func.count()).select_from(models.TopicLink).where(
+            (models.TopicLink.methode == models.LinkMethode.manuell)
+            | (models.TopicLink.status == models.LinkStatus.abgelehnt)))
+        if manuell and not args.force:
+            print(f"ABBRUCH: {manuell} manuelle Korrektur(en) vorhanden. "
+                  f"Mit --force trotzdem neu bauen (überschreibt das Review).")
+            return 1
         stats = build_topics(session)
     print(stats)
     return 0

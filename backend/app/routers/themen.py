@@ -9,6 +9,7 @@ import uuid
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session, selectinload
 
@@ -16,6 +17,15 @@ from .. import models
 from ..db import get_session
 
 router = APIRouter()
+
+
+class TopicPatch(BaseModel):
+    name: str | None = None
+    status: str | None = None
+
+
+class MergeBody(BaseModel):
+    quelle_id: uuid.UUID  # dieses Thema wird in {topic_id} einsortiert und gelöscht
 
 
 @router.get("")
@@ -67,6 +77,7 @@ def detail(topic_id: uuid.UUID, session: Session = Depends(get_session)) -> dict
         "status": topic.status.value,
         "verlauf": [
             {
+                "section_id": str(s.id),
                 "document_id": str(s.document_id),
                 "sitzungsdatum": s.document.sitzungsdatum.isoformat() if s.document.sitzungsdatum else None,
                 "sitzungstyp": s.document.sitzungstyp.value,
@@ -81,3 +92,83 @@ def detail(topic_id: uuid.UUID, session: Session = Depends(get_session)) -> dict
             for s in secs
         ],
     }
+
+
+# --- Matching-Review -------------------------------------------------------
+@router.patch("/{topic_id}")
+def umbenennen(topic_id: uuid.UUID, patch: TopicPatch,
+               session: Session = Depends(get_session)) -> dict:
+    topic = session.get(models.Topic, topic_id)
+    if not topic:
+        raise HTTPException(404, "Thema nicht gefunden")
+    if patch.name is not None:
+        topic.name = patch.name.strip() or topic.name
+    if patch.status is not None:
+        try:
+            topic.status = models.TopicStatus(patch.status)
+        except ValueError:
+            raise HTTPException(422, "Ungültiger Status")
+    session.commit()
+    return {"id": str(topic.id), "name": topic.name, "status": topic.status.value}
+
+
+@router.post("/{topic_id}/sections/{section_id}/ablehnen")
+def link_ablehnen(topic_id: uuid.UUID, section_id: uuid.UUID,
+                  session: Session = Depends(get_session)) -> dict:
+    """Widerspruch: TOP aus dem Thema entfernen (Link -> abgelehnt)."""
+    link = session.scalar(select(models.TopicLink).where(
+        models.TopicLink.topic_id == topic_id, models.TopicLink.section_id == section_id))
+    if not link:
+        raise HTTPException(404, "Zuordnung nicht gefunden")
+    link.status = models.LinkStatus.abgelehnt
+    session.commit()
+    return {"ok": True}
+
+
+@router.post("/{topic_id}/sections/{section_id}")
+def link_setzen(topic_id: uuid.UUID, section_id: uuid.UUID,
+                session: Session = Depends(get_session)) -> dict:
+    """TOP manuell diesem Thema zuordnen (bestätigter manueller Link)."""
+    if not session.get(models.Topic, topic_id):
+        raise HTTPException(404, "Thema nicht gefunden")
+    if not session.get(models.Section, section_id):
+        raise HTTPException(404, "TOP nicht gefunden")
+    link = session.scalar(select(models.TopicLink).where(
+        models.TopicLink.topic_id == topic_id, models.TopicLink.section_id == section_id))
+    if link:
+        link.status = models.LinkStatus.bestaetigt
+        link.methode = models.LinkMethode.manuell
+    else:
+        session.add(models.TopicLink(
+            topic_id=topic_id, section_id=section_id, methode=models.LinkMethode.manuell,
+            status=models.LinkStatus.bestaetigt, match_score=None))
+    session.commit()
+    return {"ok": True}
+
+
+@router.post("/{topic_id}/merge")
+def zusammenfuehren(topic_id: uuid.UUID, body: MergeBody,
+                    session: Session = Depends(get_session)) -> dict:
+    """Führt das Quell-Thema in {topic_id} (Ziel) zusammen und löscht die Quelle."""
+    ziel = session.get(models.Topic, topic_id)
+    quelle = session.get(models.Topic, body.quelle_id)
+    if not ziel or not quelle:
+        raise HTTPException(404, "Thema nicht gefunden")
+    if ziel.id == quelle.id:
+        raise HTTPException(422, "Quelle und Ziel sind identisch")
+    # Sections, die im Ziel schon verlinkt sind -> Quell-Link löschen (kein Duplikat).
+    ziel_sections = set(session.scalars(select(models.TopicLink.section_id)
+                                        .where(models.TopicLink.topic_id == ziel.id)).all())
+    for link in session.scalars(select(models.TopicLink)
+                                .where(models.TopicLink.topic_id == quelle.id)).all():
+        if link.section_id in ziel_sections:
+            session.delete(link)
+        else:
+            link.topic_id = ziel.id
+    session.flush()
+    session.delete(quelle)
+    if len(session.scalars(select(models.TopicLink.section_id)
+                           .where(models.TopicLink.topic_id == ziel.id)).all()) > 1:
+        ziel.status = models.TopicStatus.laufend
+    session.commit()
+    return {"ok": True, "ziel_id": str(ziel.id)}

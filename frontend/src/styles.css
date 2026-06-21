@@ -49,3 +49,18 @@ main { padding-top: 20px; }
 .item { display: flex; gap: 8px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--line); line-height: 1.4; }
 .item-text { flex: 1; }
 .back { margin-bottom: 14px; }
+
+.thema-kopf { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.thema-kopf input { padding: 7px 10px; border: 1px solid var(--line); border-radius: 6px; font: inherit; min-width: 280px; }
+.thema-kopf button, .review-box button, .entfernen {
+  font: inherit; cursor: pointer; border: 1px solid var(--line);
+  background: var(--card); padding: 5px 10px; border-radius: 6px;
+}
+.thema-kopf button.on { background: var(--dpsg); color: #fff; border-color: var(--dpsg); }
+.review-box { background: #f0f3ef; border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin: 12px 0; display: grid; gap: 16px; }
+.review-box input { padding: 7px 10px; border: 1px solid var(--line); border-radius: 6px; font: inherit; width: 100%; margin: 6px 0; }
+.addzeile { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 14px; }
+.addzeile span { flex: 1; }
+.addzeile .muted, .muted { color: var(--muted); }
+.entfernen { color: #b42318; padding: 1px 7px; margin-right: 8px; }
+

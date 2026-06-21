@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import {
-  api, type Item, type SitzungDetail, type SitzungKopf, type ThemaDetail,
-  type ThemaKopf, type Treffer,
+  api, type Item, type SektionTreffer, type SitzungDetail, type SitzungKopf,
+  type ThemaDetail, type ThemaKopf, type Treffer,
 } from "./api";
 
 const TYP_LABEL: Record<string, string> = {
@@ -143,19 +143,89 @@ function Sitzungen() {
 function Themen() {
   const [liste, setListe] = useState<ThemaKopf[]>([]);
   const [detail, setDetail] = useState<ThemaDetail | null>(null);
+  const [edit, setEdit] = useState(false);
+  const [name, setName] = useState("");
+  const [addQ, setAddQ] = useState("");
+  const [addRes, setAddRes] = useState<SektionTreffer[]>([]);
+  const [mergeQ, setMergeQ] = useState("");
 
-  useEffect(() => {
-    api.themen(2).then((r) => setListe(r.themen)).catch(() => setListe([]));
-  }, []);
+  const ladeListe = () => api.themen(2).then((r) => setListe(r.themen)).catch(() => setListe([]));
+  useEffect(() => { ladeListe(); }, []);
+
+  const oeffne = (id: string) =>
+    api.thema(id).then((d) => {
+      setDetail(d); setName(d.name); setEdit(false);
+      setAddQ(""); setAddRes([]); setMergeQ("");
+    });
+  const reload = () => detail && api.thema(detail.id).then(setDetail);
+
+  async function sucheTops(q: string) {
+    setAddQ(q);
+    if (q.trim().length < 2) return setAddRes([]);
+    setAddRes((await api.sektionenSuche(q.trim())).treffer);
+  }
 
   if (detail) {
+    const mergeKandidaten = liste.filter(
+      (t) => t.id !== detail.id && t.name.toLowerCase().includes(mergeQ.toLowerCase()),
+    );
     return (
       <div>
         <button className="back" onClick={() => setDetail(null)}>← zurück</button>
-        <h2>{detail.name} <span className="badge badge-info">{detail.verlauf.length} TOPs</span></h2>
-        {detail.verlauf.map((v, i) => (
-          <section key={i} className="top">
-            <h3>{v.sitzungsdatum} · {v.sitzungstyp.toUpperCase()} · TOP {v.top_nr}: {v.top_titel}</h3>
+        <div className="thema-kopf">
+          {edit ? (
+            <>
+              <input value={name} onChange={(e) => setName(e.target.value)} />
+              <button onClick={async () => { await api.themaUmbenennen(detail.id, name); await ladeListe(); await reload(); }}>
+                Name speichern
+              </button>
+            </>
+          ) : (
+            <h2>{detail.name} <span className="badge badge-info">{detail.verlauf.length} TOPs</span></h2>
+          )}
+          <button className={edit ? "on" : ""} onClick={() => setEdit(!edit)}>
+            {edit ? "Fertig" : "✎ Bearbeiten"}
+          </button>
+        </div>
+
+        {edit && (
+          <div className="review-box">
+            <div>
+              <strong>TOP hinzufügen:</strong>
+              <input placeholder="TOP-Titel suchen…" value={addQ} onChange={(e) => sucheTops(e.target.value)} />
+              {addRes.map((s) => (
+                <div key={s.id} className="addzeile">
+                  <span>{s.sitzungsdatum} · {s.top_titel}</span>
+                  {s.aktuelles_thema && <span className="muted"> (in „{s.aktuelles_thema}")</span>}
+                  <button onClick={async () => { await api.topHinzufuegen(detail.id, s.id); await reload(); }}>+ hinzufügen</button>
+                </div>
+              ))}
+            </div>
+            <div>
+              <strong>Anderes Thema hier einfügen (zusammenführen):</strong>
+              <input placeholder="Zielthema suchen…" value={mergeQ} onChange={(e) => setMergeQ(e.target.value)} />
+              {mergeQ.length >= 2 && mergeKandidaten.slice(0, 6).map((t) => (
+                <div key={t.id} className="addzeile">
+                  <span>{t.name} ({t.sitzungen})</span>
+                  <button onClick={async () => {
+                    if (!confirm(`„${t.name}" in „${detail.name}" einfügen und löschen?`)) return;
+                    await api.themenZusammenfuehren(detail.id, t.id); await ladeListe(); await reload();
+                  }}>zusammenführen</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {detail.verlauf.map((v) => (
+          <section key={v.section_id} className="top">
+            <h3>
+              {edit && (
+                <button className="entfernen" title="aus Thema entfernen"
+                  onClick={async () => { await api.topEntfernen(detail.id, v.section_id); await reload(); }}>✕</button>
+              )}
+              {v.sitzungsdatum} · {v.sitzungstyp.toUpperCase()} · TOP {v.top_nr}: {v.top_titel}
+            </h3>
             <ul className="itemliste">
               {v.items.map((it, j) => <ItemZeile key={j} it={it} />)}
             </ul>
@@ -167,12 +237,12 @@ function Themen() {
 
   return (
     <>
-      <p className="status">Wiederkehrende Themen über mehrere Sitzungen (ab 2 Sitzungen).</p>
+      <p className="status">Wiederkehrende Themen über mehrere Sitzungen (ab 2 Sitzungen). Klick → Verlauf · dort „Bearbeiten" zum Korrigieren.</p>
       <table className="sitzungstabelle">
         <thead><tr><th>Thema</th><th>Sitzungen</th><th>Zeitraum</th></tr></thead>
         <tbody>
           {liste.map((t) => (
-            <tr key={t.id} onClick={() => api.thema(t.id).then(setDetail)}>
+            <tr key={t.id} onClick={() => oeffne(t.id)}>
               <td>{t.name}</td>
               <td>{t.sitzungen}</td>
               <td>{t.von} – {t.bis}</td>
