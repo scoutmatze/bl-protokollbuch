@@ -121,6 +121,18 @@ Zwei Befunde flossen direkt in den Parser:
   auslesen (sonst nur ~16 Zeilen statt des ganzen Protokolls).
 - **Alte eBLs nutzen `TOP 1 Titel`** (ohne Punkt/Klammer) → zweite Überschriften-Form.
 
+### Item-Extraktion (Beschlüsse / Infos / Aufgaben / Diskussion)
+Innerhalb der TOPs zieht `items.py` die Nutzlast aus drei Signalen:
+1. **Text-Detektor für Beschlüsse** — neuere Protokolle markieren explizit:
+   „ENTSCHEIDUNG (einstimmig): …", „Beschluss …: einstimmig angenommen". Verlässlichstes
+   Signal; Abstimmungsmodus/-ergebnis wird mitgeparst.
+2. **I/B/E-Randmarker** (linke Spalte, ältere Epoche): E→beschluss, B→diskussion, I→info.
+3. **WER-Spalte** (rechts, über X-Koordinate): Verantwortliche → `aufgabe`.
+
+Aggregat über alle 157 Protokolle: **22.362 Items** — davon **792 Beschlüsse**,
+**1.440 Aufgaben** (mit Verantwortlichen), 575 Diskussionen, 19.555 Infos. Das ist die
+durchsuchbare Grundlage für „liste alle Beschlüsse zu …".
+
 ### Harte Regel: Protokoll-Identifikation
 Welche Datei *das Protokoll* ist, wird über **„PK" oder „PL" als abgegrenztes Token**
 erkannt (Regex `(^|[ _/.])(p[kl])([ _.]|$)`), **nicht** als Teilstring — sonst werden

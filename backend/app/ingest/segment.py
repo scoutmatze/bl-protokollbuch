@@ -17,7 +17,7 @@ TOPs wieder. Dafür Tagesordnung als erwartete Nummernmenge extrahieren.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from .extract import Extracted, Line
 
@@ -45,6 +45,7 @@ class Section:
     seite_bis: int
     zeit_real_min: int | None = None
     zeit_geplant_min: int | None = None
+    lines: list[Line] = field(default_factory=list)   # Body-Zeilen (ohne Überschrift)
 
 
 def _body_start(lines: list[Line]) -> int:
@@ -96,5 +97,6 @@ def segment(ex: Extracted) -> list[Section]:
             nr=nr, titel=titel, text=txt,
             seite_von=block[0].page, seite_bis=block[-1].page,
             zeit_real_min=real, zeit_geplant_min=geplant,
+            lines=block[1:],
         ))
     return sections
