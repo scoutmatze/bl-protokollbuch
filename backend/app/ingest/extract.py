@@ -6,8 +6,16 @@ Spaltenstruktur.
 """
 from __future__ import annotations
 
+import re
+from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
+
+# Bekannte laufende Kopfzeilen (immer entfernen, unabhängig von der Häufigkeit).
+RE_BOILERPLATE = re.compile(
+    r"^(Deutsche Pfadfinderschaft Sankt Georg|Bundesleitung|Bundeszentrum Westernohe)$",
+    re.IGNORECASE,
+)
 
 
 @dataclass
@@ -53,6 +61,22 @@ def extract_pdf(path: Path) -> Extracted:
             lines.append(Line(text=txt, page=pno, y=y, x0=x0, x1=x1))
             full.append(txt)
     doc.close()
+
+    # Laufende Kopf-/Fußzeilen entfernen: Zeilen, die auf >=3 Seiten identisch
+    # vorkommen, sind Boilerplate (verhindert doppelte Items in mehrseitigen TOPs).
+    pages_of: dict[str, set[int]] = defaultdict(set)
+    for ln in lines:
+        pages_of[ln.text].add(ln.page)
+
+    def _boiler(t: str) -> bool:
+        # Nur LANGE, oft wiederholte Zeilen sind Kopf-/Fußzeilen. Kurze, häufige
+        # Tokens (Aufzählungs-"-"/"o", die Marker "I"/"B"/"E", WER-Initialen)
+        # bleiben erhalten — sie sind für Segmentierung/Klassifikation nötig.
+        s = t.strip()
+        return (len(pages_of[t]) >= 3 and len(s) >= 12) or bool(RE_BOILERPLATE.match(s))
+
+    lines = [ln for ln in lines if not _boiler(ln.text)]
+    full = [t for t in full if not _boiler(t)]
     return Extracted(text="\n".join(full), lines=lines, page_count=pno,
                      page_width=page_width)
 
@@ -71,8 +95,15 @@ def _iter_par_texts(container):
         if isinstance(block, Paragraph):
             yield block.text
         elif isinstance(block, Table):
+            # Verbundene Zellen (horizontal/vertikal) liefern dasselbe XML-Element
+            # mehrfach -> über die Element-Identität (._tc) deduplizieren.
+            seen: set[int] = set()
             for row in block.rows:
                 for cell in row.cells:
+                    key = id(cell._tc)
+                    if key in seen:
+                        continue
+                    seen.add(key)
                     yield from _iter_par_texts(cell)
 
 

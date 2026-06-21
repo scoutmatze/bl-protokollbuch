@@ -8,10 +8,21 @@ from __future__ import annotations
 from sqlalchemy import text
 
 
-def search_items(session, q: str, typ: str | None = None, limit: int = 20) -> list[dict]:
-    """Sucht Items per deutscher Volltextsuche, optional gefiltert nach Typ."""
+_ORDER = {
+    "relevanz": "rank DESC, d.sitzungsdatum DESC NULLS LAST",
+    "datum": "d.sitzungsdatum DESC NULLS LAST, rank DESC",
+}
+
+
+def search_items(session, q: str, typ: str | None = None, limit: int = 20,
+                 sort: str = "relevanz") -> list[dict]:
+    """Sucht Items per deutscher Volltextsuche, optional gefiltert nach Typ.
+
+    sort: 'relevanz' (Standard) oder 'datum' (neueste zuerst).
+    """
+    order = _ORDER.get(sort, _ORDER["relevanz"])
     sql = text(
-        """
+        f"""
         SELECT i.typ::text         AS typ,
                i.text              AS text,
                i.verantwortlich    AS verantwortlich,
@@ -27,9 +38,9 @@ def search_items(session, q: str, typ: str | None = None, limit: int = 20) -> li
         JOIN document d ON d.id = s.document_id
         WHERE to_tsvector('german', i.text) @@ plainto_tsquery('german', :q)
           AND (CAST(:typ AS text) IS NULL OR i.typ::text = CAST(:typ AS text))
-        ORDER BY rank DESC, d.sitzungsdatum DESC NULLS LAST
+        ORDER BY {order}
         LIMIT :limit
-        """
+        """  # noqa: S608 — `order` stammt aus fester Allowlist (_ORDER), kein User-Input
     )
     rows = session.execute(sql, {"q": q, "typ": typ, "limit": limit}).mappings().all()
     return [dict(r) for r in rows]

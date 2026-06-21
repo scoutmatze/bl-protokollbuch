@@ -14,8 +14,9 @@ router = APIRouter()
 def search(
     q: str = Query(..., min_length=2, description="Suchbegriff"),
     typ: str | None = Query(None, description="Filter: beschluss|info|aufgabe|diskussion"),
-    limit: int = Query(20, ge=1, le=100),
+    sort: str = Query("relevanz", pattern="^(relevanz|datum)$"),
+    limit: int = Query(50, ge=1, le=100),
     session: Session = Depends(get_session),
 ) -> dict:
-    treffer = search_items(session, q, typ, limit)
+    treffer = search_items(session, q, typ, limit, sort)
     return {"anzahl": len(treffer), "treffer": treffer}

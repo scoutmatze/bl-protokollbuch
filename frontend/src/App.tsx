@@ -32,6 +32,7 @@ function ItemZeile({ it }: { it: Item }) {
 function Suche() {
   const [q, setQ] = useState("");
   const [typ, setTyp] = useState("");
+  const [sort, setSort] = useState("relevanz");
   const [treffer, setTreffer] = useState<Treffer[]>([]);
   const [status, setStatus] = useState<string>("");
 
@@ -40,7 +41,7 @@ function Suche() {
     if (q.trim().length < 2) return;
     setStatus("Suche …");
     try {
-      const r = await api.suche(q.trim(), typ || undefined);
+      const r = await api.suche(q.trim(), typ || undefined, sort);
       setTreffer(r.treffer);
       setStatus(`${r.anzahl} Treffer`);
     } catch (err) {
@@ -63,6 +64,10 @@ function Suche() {
           <option value="aufgabe">nur Aufgaben</option>
           <option value="diskussion">nur Diskussionen</option>
           <option value="info">nur Infos</option>
+        </select>
+        <select value={sort} onChange={(e) => setSort(e.target.value)} title="Sortierung">
+          <option value="relevanz">Relevanz</option>
+          <option value="datum">Datum (neueste zuerst)</option>
         </select>
         <button type="submit">Suchen</button>
       </form>

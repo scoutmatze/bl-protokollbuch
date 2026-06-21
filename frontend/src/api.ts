@@ -50,9 +50,9 @@ async function get<T>(url: string): Promise<T> {
 }
 
 export const api = {
-  suche: (q: string, typ?: string) =>
+  suche: (q: string, typ?: string, sort: string = "relevanz") =>
     get<{ anzahl: number; treffer: Treffer[] }>(
-      `/api/search?q=${encodeURIComponent(q)}${typ ? `&typ=${typ}` : ""}&limit=50`,
+      `/api/search?q=${encodeURIComponent(q)}${typ ? `&typ=${typ}` : ""}&sort=${sort}&limit=50`,
     ),
   sitzungen: () => get<{ sitzungen: SitzungKopf[] }>("/api/sitzungen"),
   sitzung: (id: string) => get<SitzungDetail>(`/api/sitzungen/${id}`),
