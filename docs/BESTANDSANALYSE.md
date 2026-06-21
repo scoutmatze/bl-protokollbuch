@@ -101,6 +101,26 @@ Protokolle** (Identifikation: „PK"/„PL" als abgegrenztes Token):
 v. a. kurze eBL-/Sondersitzungen mit abweichendem Aufbau → Fallback + manuelles Review.
 Das rechtfertigt die Strategie „v1 ohne KI" ([KONZEPT.md](KONZEPT.md#10-offene-punkte--risiken)).
 
+### Ergebnis des Python-Parsers (Phase 1)
+Der echte Parser (`backend/app/ingest/`, PyMuPDF + python-docx, korrekte Umlaute) wurde
+im Container über alle 157 erkannten Protokolle laufen gelassen:
+
+| TOPs erkannt | Protokolle |
+|---|---|
+| 10+ | 82 |
+| 5–9 | 46 |
+| 1–4 | 27 |
+| 0 | **2** |
+
+→ **155/157 (98,7 %)** sauber segmentiert. Die 2 Reste: eine quasi leere Mini-eBL und
+`Anleitung BL-PK.docx` (gar kein Protokoll — Fehl-ID über das Token „BL-**PK**", korrigiert
+sich durch 0 TOPs selbst). Beispiele: BL 2024 25/25 TOPs, BL 2014 13/13, eBL 2017 6 TOPs.
+
+Zwei Befunde flossen direkt in den Parser:
+- **DOCX-Inhalt steht in Tabellen** → Absätze in Dokumentreihenfolge inkl. Tabellenzellen
+  auslesen (sonst nur ~16 Zeilen statt des ganzen Protokolls).
+- **Alte eBLs nutzen `TOP 1 Titel`** (ohne Punkt/Klammer) → zweite Überschriften-Form.
+
 ### Harte Regel: Protokoll-Identifikation
 Welche Datei *das Protokoll* ist, wird über **„PK" oder „PL" als abgegrenztes Token**
 erkannt (Regex `(^|[ _/.])(p[kl])([ _.]|$)`), **nicht** als Teilstring — sonst werden
