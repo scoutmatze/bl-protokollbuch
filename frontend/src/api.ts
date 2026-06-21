@@ -43,6 +43,31 @@ export interface SitzungDetail {
   tops: Top[];
 }
 
+export interface ThemaKopf {
+  id: string;
+  name: string;
+  status: string;
+  sitzungen: number;
+  von: string | null;
+  bis: string | null;
+}
+
+export interface VerlaufEintrag {
+  document_id: string;
+  sitzungsdatum: string | null;
+  sitzungstyp: string;
+  top_nr: string | null;
+  top_titel: string | null;
+  items: Item[];
+}
+
+export interface ThemaDetail {
+  id: string;
+  name: string;
+  status: string;
+  verlauf: VerlaufEintrag[];
+}
+
 async function get<T>(url: string): Promise<T> {
   const r = await fetch(url);
   if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
@@ -56,4 +81,6 @@ export const api = {
     ),
   sitzungen: () => get<{ sitzungen: SitzungKopf[] }>("/api/sitzungen"),
   sitzung: (id: string) => get<SitzungDetail>(`/api/sitzungen/${id}`),
+  themen: (min = 2) => get<{ anzahl: number; themen: ThemaKopf[] }>(`/api/themen?min_sitzungen=${min}`),
+  thema: (id: string) => get<ThemaDetail>(`/api/themen/${id}`),
 };

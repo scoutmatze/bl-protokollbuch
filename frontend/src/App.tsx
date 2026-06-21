@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
-import { api, type Item, type SitzungDetail, type SitzungKopf, type Treffer } from "./api";
+import {
+  api, type Item, type SitzungDetail, type SitzungKopf, type ThemaDetail,
+  type ThemaKopf, type Treffer,
+} from "./api";
 
 const TYP_LABEL: Record<string, string> = {
   beschluss: "Beschluss",
@@ -137,18 +140,67 @@ function Sitzungen() {
   );
 }
 
+function Themen() {
+  const [liste, setListe] = useState<ThemaKopf[]>([]);
+  const [detail, setDetail] = useState<ThemaDetail | null>(null);
+
+  useEffect(() => {
+    api.themen(2).then((r) => setListe(r.themen)).catch(() => setListe([]));
+  }, []);
+
+  if (detail) {
+    return (
+      <div>
+        <button className="back" onClick={() => setDetail(null)}>← zurück</button>
+        <h2>{detail.name} <span className="badge badge-info">{detail.verlauf.length} TOPs</span></h2>
+        {detail.verlauf.map((v, i) => (
+          <section key={i} className="top">
+            <h3>{v.sitzungsdatum} · {v.sitzungstyp.toUpperCase()} · TOP {v.top_nr}: {v.top_titel}</h3>
+            <ul className="itemliste">
+              {v.items.map((it, j) => <ItemZeile key={j} it={it} />)}
+            </ul>
+          </section>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <p className="status">Wiederkehrende Themen über mehrere Sitzungen (ab 2 Sitzungen).</p>
+      <table className="sitzungstabelle">
+        <thead><tr><th>Thema</th><th>Sitzungen</th><th>Zeitraum</th></tr></thead>
+        <tbody>
+          {liste.map((t) => (
+            <tr key={t.id} onClick={() => api.thema(t.id).then(setDetail)}>
+              <td>{t.name}</td>
+              <td>{t.sitzungen}</td>
+              <td>{t.von} – {t.bis}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </>
+  );
+}
+
 export function App() {
-  const [tab, setTab] = useState<"suche" | "sitzungen">("suche");
+  const [tab, setTab] = useState<"suche" | "themen" | "sitzungen">("suche");
   return (
     <div className="app">
       <header>
         <h1>BL-Protokollbuch</h1>
         <nav>
           <button className={tab === "suche" ? "on" : ""} onClick={() => setTab("suche")}>Suche</button>
+          <button className={tab === "themen" ? "on" : ""} onClick={() => setTab("themen")}>Themen</button>
           <button className={tab === "sitzungen" ? "on" : ""} onClick={() => setTab("sitzungen")}>Sitzungen</button>
         </nav>
       </header>
-      <main>{tab === "suche" ? <Suche /> : <Sitzungen />}</main>
+      <main>
+        {tab === "suche" && <Suche />}
+        {tab === "themen" && <Themen />}
+        {tab === "sitzungen" && <Sitzungen />}
+      </main>
     </div>
   );
 }

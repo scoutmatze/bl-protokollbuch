@@ -40,8 +40,10 @@ Zwei Kern-Nutzungen:
 - **Phase 1** — regelbasierte Ingestion (PDF/DOCX → TOPs → Items), validiert über 157
   Protokolle: 155/157 segmentiert, 22.367 Items (792 Beschlüsse) ✅
 - **Phase 2** — DB-Persistenz (PostgreSQL + pgvector) + deutsche Volltextsuche ✅
-- **Frontend** — Minimal-UI (React/Vite): Suche mit Typ-Filter + Sitzungs-Browser ✅
-- Nächste Phasen: Embeddings/semantische Suche · Themen-Matching · Login · Deployment
+- **Frontend** — Minimal-UI (React/Vite): Suche · Themen · Sitzungs-Browser ✅
+- **Themen-Matching** — lexikalische v1: TOPs sitzungsübergreifend zu Themensträngen
+  (145 mehrteilige Themen, z. B. Ausbildung über 25 Sitzungen 2014–2026) ✅
+- Nächste Phasen: semantisches Matching (Embeddings) · manuelles Review · Login · Deployment
 
 ### Alles starten (Dev)
 
@@ -51,6 +53,7 @@ docker compose -f infra/docker-compose.dev.yml up        # db + backend + fronte
 # einmalig in zweitem Terminal: Schema + Daten laden
 docker compose -f infra/docker-compose.dev.yml run --rm backend alembic upgrade head
 docker compose -f infra/docker-compose.dev.yml run --rm backend python -m app.ingest.persist --root /data
+docker compose -f infra/docker-compose.dev.yml run --rm backend python -m app.matching   # Themen bauen
 ```
 Frontend: http://localhost:5173 · API-Doku: http://localhost:8000/docs
 
