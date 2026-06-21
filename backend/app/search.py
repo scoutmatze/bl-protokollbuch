@@ -14,11 +14,11 @@ _ORDER = {
 }
 
 
-def search_items(session, q: str, typ: str | None = None, limit: int = 20,
-                 sort: str = "relevanz") -> list[dict]:
-    """Sucht Items per deutscher Volltextsuche, optional gefiltert nach Typ.
+def _run(session, q: str, typ: str | None, limit: int, sort: str) -> list[dict]:
+    """Eine Suchanfrage mit websearch_to_tsquery.
 
-    sort: 'relevanz' (Standard) oder 'datum' (neueste zuerst).
+    websearch_to_tsquery unterstützt natürliche Operatoren:
+      `wbk betrag` -> beide (UND) · `wbk or betrag` -> einer · `"genaue phrase"` · `-wort`
     """
     order = _ORDER.get(sort, _ORDER["relevanz"])
     sql = text(
@@ -32,11 +32,11 @@ def search_items(session, q: str, typ: str | None = None, limit: int = 20,
                s.top_nr            AS top_nr,
                s.ueberschrift      AS top_titel,
                ts_rank(to_tsvector('german', i.text),
-                       plainto_tsquery('german', :q)) AS rank
+                       websearch_to_tsquery('german', :q)) AS rank
         FROM item i
         JOIN section s  ON s.id = i.section_id
         JOIN document d ON d.id = s.document_id
-        WHERE to_tsvector('german', i.text) @@ plainto_tsquery('german', :q)
+        WHERE to_tsvector('german', i.text) @@ websearch_to_tsquery('german', :q)
           AND (CAST(:typ AS text) IS NULL OR i.typ::text = CAST(:typ AS text))
         ORDER BY {order}
         LIMIT :limit
@@ -44,3 +44,17 @@ def search_items(session, q: str, typ: str | None = None, limit: int = 20,
     )
     rows = session.execute(sql, {"q": q, "typ": typ, "limit": limit}).mappings().all()
     return [dict(r) for r in rows]
+
+
+def search_items(session, q: str, typ: str | None = None, limit: int = 50,
+                 sort: str = "relevanz") -> dict:
+    """Volltextsuche über Items. Bei mehreren Begriffen gilt UND; liefert das
+    keine Treffer, wird automatisch auf ODER zurückgefallen (mit Hinweis).
+    """
+    rows = _run(session, q, typ, limit, sort)
+    fallback_oder = False
+    terme = [t for t in q.split() if t.lower() not in {"or", "and"}]
+    if not rows and len(terme) > 1 and '"' not in q:
+        rows = _run(session, " or ".join(terme), typ, limit, sort)
+        fallback_oder = bool(rows)
+    return {"treffer": rows, "fallback_oder": fallback_oder}

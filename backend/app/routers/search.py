@@ -18,5 +18,8 @@ def search(
     limit: int = Query(50, ge=1, le=100),
     session: Session = Depends(get_session),
 ) -> dict:
-    treffer = search_items(session, q, typ, limit, sort)
-    return {"anzahl": len(treffer), "treffer": treffer}
+    res = search_items(session, q, typ, limit, sort)
+    hinweis = None
+    if res["fallback_oder"]:
+        hinweis = "Keine Treffer mit allen Begriffen — zeige Treffer mit mindestens einem."
+    return {"anzahl": len(res["treffer"]), "treffer": res["treffer"], "hinweis": hinweis}

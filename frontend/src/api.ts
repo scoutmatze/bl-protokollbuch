@@ -76,7 +76,7 @@ async function get<T>(url: string): Promise<T> {
 
 export const api = {
   suche: (q: string, typ?: string, sort: string = "relevanz") =>
-    get<{ anzahl: number; treffer: Treffer[] }>(
+    get<{ anzahl: number; treffer: Treffer[]; hinweis: string | null }>(
       `/api/search?q=${encodeURIComponent(q)}${typ ? `&typ=${typ}` : ""}&sort=${sort}&limit=50`,
     ),
   sitzungen: () => get<{ sitzungen: SitzungKopf[] }>("/api/sitzungen"),

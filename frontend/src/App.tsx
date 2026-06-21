@@ -46,7 +46,7 @@ function Suche() {
     try {
       const r = await api.suche(q.trim(), typ || undefined, sort);
       setTreffer(r.treffer);
-      setStatus(`${r.anzahl} Treffer`);
+      setStatus(`${r.anzahl} Treffer${r.hinweis ? ` · ${r.hinweis}` : ""}`);
     } catch (err) {
       setStatus(`Fehler: ${(err as Error).message}`);
     }
@@ -57,7 +57,7 @@ function Suche() {
       <form className="suchleiste" onSubmit={run}>
         <input
           autoFocus
-          placeholder="Suchbegriff, z. B. Ausbildung oder Jamboree"
+          placeholder={'Suche – mehrere Begriffe = UND · "genaue phrase" · wort OR wort · -ausschluss'}
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
