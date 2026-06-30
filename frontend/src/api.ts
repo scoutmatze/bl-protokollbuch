@@ -94,9 +94,9 @@ async function send<T>(method: string, url: string, body?: unknown): Promise<T> 
 }
 
 export const api = {
-  suche: (q: string, typ?: string, sort: string = "relevanz") =>
+  suche: (q: string, typ?: string, sort = "relevanz", modus = "text") =>
     get<{ anzahl: number; treffer: Treffer[]; hinweis: string | null }>(
-      `/api/search?q=${encodeURIComponent(q)}${typ ? `&typ=${typ}` : ""}&sort=${sort}&limit=50`,
+      `/api/search?q=${encodeURIComponent(q)}${typ ? `&typ=${typ}` : ""}&sort=${sort}&modus=${modus}&limit=50`,
     ),
   sitzungen: () => get<{ sitzungen: SitzungKopf[] }>("/api/sitzungen"),
   sitzung: (id: string) => get<SitzungDetail>(`/api/sitzungen/${id}`),

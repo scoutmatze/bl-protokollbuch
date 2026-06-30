@@ -36,6 +36,7 @@ function Suche() {
   const [q, setQ] = useState("");
   const [typ, setTyp] = useState("");
   const [sort, setSort] = useState("relevanz");
+  const [modus, setModus] = useState("text");
   const [treffer, setTreffer] = useState<Treffer[]>([]);
   const [status, setStatus] = useState<string>("");
 
@@ -44,7 +45,7 @@ function Suche() {
     if (q.trim().length < 2) return;
     setStatus("Suche …");
     try {
-      const r = await api.suche(q.trim(), typ || undefined, sort);
+      const r = await api.suche(q.trim(), typ || undefined, sort, modus);
       setTreffer(r.treffer);
       setStatus(`${r.anzahl} Treffer${r.hinweis ? ` · ${r.hinweis}` : ""}`);
     } catch (err) {
@@ -71,6 +72,11 @@ function Suche() {
         <select value={sort} onChange={(e) => setSort(e.target.value)} title="Sortierung">
           <option value="relevanz">Relevanz</option>
           <option value="datum">Datum (neueste zuerst)</option>
+        </select>
+        <select value={modus} onChange={(e) => setModus(e.target.value)} title="Suchmodus">
+          <option value="text">Text</option>
+          <option value="semantisch">Semantisch</option>
+          <option value="hybrid">Hybrid</option>
         </select>
         <button type="submit">Suchen</button>
       </form>
